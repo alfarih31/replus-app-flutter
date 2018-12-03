@@ -1,0 +1,73 @@
+{
+  "project_info": {
+    "project_number": "169133229879",
+    "firebase_url": "https://replus-162509.firebaseio.com",
+    "project_id": "replus-162509",
+    "storage_bucket": "replus-162509.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:169133229879:android:54026ab62defac73",
+        "android_client_info": {
+          "package_name": "com.replus.replusapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "169133229879-u6tart54caqd5r5tc5u2d6g9kr82d9h0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtSzyD9l3BxNF01z2vpTyUpy7LrhIKPNg"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:169133229879:android:3d34e47bce1384b1",
+        "android_client_info": {
+          "package_name": "replus.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "169133229879-u6tart54caqd5r5tc5u2d6g9kr82d9h0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtSzyD9l3BxNF01z2vpTyUpy7LrhIKPNg"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
