@@ -1,0 +1,52 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
+
+class SettingsPage extends StatelessWidget{
+  SettingsPage({Key key, @required this.firebaseData, @required this.googleData})
+    : super(key: key);
+  final FirebaseUser firebaseData;
+  final GoogleSignInAccount googleData;
+  final profile = Container(
+    margin: EdgeInsets.only(top: 30.0),
+    height: 80.0,
+    padding: EdgeInsets.all(8.0),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Hero(
+          tag: 'user-picture',
+          child: NetworkImage(googleData.photoUrl),
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center
+            children: <Widget>[
+              Container(
+                child: Text(
+                  firebaseData.displayName,
+                  style: TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      children: <Widget>[Text(), Text()],
+                    ),
+                  )
+                ],
+              )
+            ],
+          ),
+        )
+      ],
+    ),
+  )
+}
