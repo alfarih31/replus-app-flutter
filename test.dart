@@ -1,22 +1,44 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
+import 'package:http/io_client.dart';
 
+final String apiV2 = 'https://core.replus.co/api-v2/';
 bool certCheck(X509Certificate cert, String host, int port) => host == 'core.replus.co';
 
 void main() async {
+  HttpClientRequest req;
+  HttpClientResponse res;
+  HttpClient apiClient;
+  Map body = {
+    "name": "LAB2",
+    'uid': 'No8jTFk95jc21BsNfNsN42HxTe83',
+    'roomID': '-LIHhAaYVRNO2ij6Di7y',
+  };
+  var body3 = json.encoder.convert(body);
+  print(body3);
+  var body2 = json.encode({
+    "name": "LAB2",
+    "uid": "No8jTFk95jc21BsNfNsN42HxTe83",
+    "roomID": "-LIHhAaYVRNO2ij6Di7y",
+  });
+  var test = [['1'],['2'],['3'],['4']];
 
-  final String apiV2 = 'https://core.replus.co/api-v2';
-  String uid = 'TESTUID';
-  String a;
-    HttpClient apiClient = new HttpClient()
+  /*var response = await client.put('${apiV2}room-edit', body: body,
+                  headers: {
+                    'accesstoken': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJObzhqVEZrOTVqYzIxQnNOZk5zTjQySHhUZTgzIiwiaWF0IjoxNTQ2NDQxNjMxLCJleHAiOjE1NDcwNDY0MzF9.QJ14Gb2kBERAPqhnK79wGCuq7LB_ZU2TPQ2rHWBQ1NU',
+                  });*/
+  apiClient = new HttpClient()
         ..badCertificateCallback = certCheck;
-
-    HttpClientRequest req = await apiClient.getUrl(Uri.parse('${apiV2}/get-token?uid=${uid}'));
-    HttpClientResponse res = await req.close();
-    
-    await res.transform(utf8.decoder).forEach((elemetn) {
-      a = elemetn;
-    });
-    print(a);
-  }
+  /*req = await apiClient.putUrl(Uri.parse('${apiV2}room-edit'));
+  req.headers.set('accesstoken', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJObzhqVEZrOTVqYzIxQnNOZk5zTjQySHhUZTgzIiwiaWF0IjoxNTQ2NDQxNjMxLCJleHAiOjE1NDcwNDY0MzF9.QJ14Gb2kBERAPqhnK79wGCuq7LB_ZU2TPQ2rHWBQ1NU');
+  req.headers.set('Content-Type', 'application/x-www-form-urlencoded');
+  //req.headers.set(HttpHeaders.contentLengthHeader, body.length);*/
+  IOClient ioClient = new IOClient(apiClient);
+  var response = await ioClient.put('${apiV2}room-edit',
+                                    body: body,
+                                    headers: {
+                    'accesstoken': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJObzhqVEZrOTVqYzIxQnNOZk5zTjQySHhUZTgzIiwiaWF0IjoxNTQ2NDQxNjMxLCJleHAiOjE1NDcwNDY0MzF9.QJ14Gb2kBERAPqhnK79wGCuq7LB_ZU2TPQ2rHWBQ1NU',
+                  });
+  print(response.body)
+}

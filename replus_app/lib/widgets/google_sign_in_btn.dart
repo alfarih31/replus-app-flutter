@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 
 class GoogleSignInButton extends StatelessWidget {
-  final Function onPressed;
+  final ValueChanged<bool> onPressed;
+  final bool isActive;
 
   GoogleSignInButton({
     Key key,
     this.onPressed,
+    this.isActive,
   }) : super(key: key);
+
+  void handleTap(){
+    onPressed(!isActive);
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialButton(
-      onPressed: () => this.onPressed(),
+      onPressed: isActive ? handleTap : null,
       color: Colors.white,
-      elevation: 0.0,
+      elevation: 2.0,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.center,

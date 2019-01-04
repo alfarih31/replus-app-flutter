@@ -15,7 +15,7 @@
     <application
         android:name="io.flutter.app.FlutterApplication"
         android:label="Replus App"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/replus">
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"
