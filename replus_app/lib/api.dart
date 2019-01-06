@@ -22,6 +22,9 @@ class API{
     httpClient = new HttpClient()
         ..badCertificateCallback = certCheck;
     ioClient = new IOClient(httpClient);
+  }
+
+  Future refreshToken() async {
     response = await ioClient.get('$apiV2/get-token?uid=$uid');
     if (response.statusCode == 200) accessToken = response.body;
     else throw Exception('FAILED_TO_LOAD_TOKEN');

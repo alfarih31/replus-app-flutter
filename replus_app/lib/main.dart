@@ -7,6 +7,7 @@ import 'package:replus_app/widgets/google_sign_in_btn.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:replus_app/api.dart';
 import 'package:replus_app/room.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 GoogleSignIn _googleSignIn = GoogleSignIn(
   scopes: <String>[
@@ -14,11 +15,13 @@ GoogleSignIn _googleSignIn = GoogleSignIn(
     'https://www.googleapis.com/auth/contacts.readonly',
   ],
 );
-
+final FlutterSecureStorage cache = FlutterSecureStorage();
 final FirebaseAuth _auth = FirebaseAuth.instance;
 API apiClient;
+Map cacheData;
 
-void main() {
+void main() async {
+  cacheData = await cache.readAll();
   runApp(MyApp());
 }
 
@@ -34,6 +37,7 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
 class MainPage extends StatefulWidget {
   @override
   _MainPage createState() => new _MainPage();
@@ -49,26 +53,36 @@ class _MainPage extends State<MainPage> {
   @override
   void initState() {
     super.initState();
-    signed = false;
+    signed = cacheData['loggedIn'] == '1' ? true : false;
     connection = false;
     signInButton = true;
   }
 
-  Future<void> handleSignIn() async {
+  void logoutUser(bool state) {
+    setState(() {
+      signed = state;
+      signInButton = !state;});
+  }
+
+  Future handleSignIn(bool val) async {
     try {
-      await checkConnection();
+      await checkConnection(val);
       GoogleSignInAccount currentUser = await _googleSignIn.signIn();
       GoogleSignInAuthentication gSA = await currentUser.authentication;
       final snackbar = SnackBar(
                     content: Text('Signed in Successfully'),
                     backgroundColor: Colors.blueGrey,
                   );
-      scaffoldKey.currentState.showSnackBar(snackbar);
       _currentUser = await _auth.signInWithGoogle(
         idToken: gSA.idToken, accessToken: gSA.accessToken
       );
       apiClient = new API(uid: _currentUser.uid);
+      scaffoldKey.currentState.showSnackBar(snackbar);
       await apiClient.initDone;
+      cache.write(key: 'uid', value: _currentUser.uid);
+      cache.write(key: 'loggedIn', value: '1');
+      cacheData = await cache.readAll();
+      setState(() => signed = !signed);
     } catch (error) {
       await showDialog(
         context: context,
@@ -89,34 +103,20 @@ class _MainPage extends State<MainPage> {
                 child: Text('Ok'),
                 onPressed: () {
                   Navigator.of(context).pop();
-                  setState(() => signInButton = !signInButton);
                 },
               ),
             ],
           );
         }
       );
-      throw Exception(error.toString());
+      setState(() => signInButton = !signInButton);
     }
-  }
-
-  Future signInPressed(bool val) async {
-    setState(() => signInButton = val);
-    Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        CircularProgressIndicator(),
-      ],
-    );
-    try {
-      await handleSignIn();
-      setState(() => signed = !signed);
-    } catch(error) {}
   }
 
   Widget buildAuth() {
     return Scaffold(
       key: scaffoldKey,
+      backgroundColor: Colors.grey[200],
       body: ConstrainedBox(
         constraints: const BoxConstraints.expand(),
         child: authScreen(),
@@ -141,7 +141,7 @@ class _MainPage extends State<MainPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               GoogleSignInButton(
-                onPressed: connection ? signInPressed : checkConnection(),
+                onPressed: handleSignIn,
                 isActive: signInButton,
               ),
               Padding(padding: EdgeInsets.all(5.0),),
@@ -150,7 +150,7 @@ class _MainPage extends State<MainPage> {
                 height: 25.0,
                 child: RawMaterialButton(
                   shape: CircleBorder(),
-                  elevation: 5.0,
+                  elevation: 0.0,
                   onPressed: () {},
                   fillColor: connection ? Colors.green[700] : Colors.red,
                 ),
@@ -161,15 +161,16 @@ class _MainPage extends State<MainPage> {
       );
   }
 
-  Future<void> checkConnection() async {
+  Future checkConnection(bool val) async {
     try {
+      setState(() => signInButton = val);
       Center(child: CircularProgressIndicator(),);
       final result = await InternetAddress.lookup('google.com');
       if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-        setState(() => connection = true);
+        setState(() {connection = !val;});
       }
     } on SocketException catch (_) {
-      connection = false;
+      setState(() => connection = val);
       throw Exception('You\'re offline');
     }
   }
@@ -179,22 +180,29 @@ class _MainPage extends State<MainPage> {
     return MaterialApp(
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        canvasColor: Colors.transparent,
       ),
-      home: signed ? Home(firebaseData:_currentUser) : buildAuth(),
+      home: signed ? Home(firebaseData:_currentUser, logoutTap: logoutUser) : buildAuth(),
     );
   }
 }
+
 class Home extends StatelessWidget {
-  Home({Key key, @required this.firebaseData,}) : super(key: key);
+  Home({Key key, @required this.firebaseData, this.logoutTap}) : super(key: key);
   final FirebaseUser firebaseData;
-  final GlobalKey<ScaffoldState> scaffoldKey = new GlobalKey<ScaffoldState>();
+  final ValueChanged<bool> logoutTap;
+
+  Future logOut(BuildContext context) async {
+    await _googleSignIn.signOut();
+    await cache.deleteAll();
+    logoutTap(false);
+  }
 
   @override
   Widget build(BuildContext ctxt) {
     return new DefaultTabController(
       length: 3,
       child: new Scaffold(
-        key: scaffoldKey,
         appBar: new AppBar(
           title: new Text('Replus App'),
           bottom: new TabBar(
@@ -214,26 +222,16 @@ class Home extends StatelessWidget {
               ),
             ],
           ),
+          actions: <Widget>[
+            IconButton(
+              icon: Icon(Icons.exit_to_app, size: 36.0,),
+              onPressed: () => logOut(ctxt),
+            ),
+          ],
         ),
         body: new TabBarView(
           children: <Widget>[
-            Center(
-              child: FutureBuilder(
-                future: apiClient.getUserData(),
-                builder: (ctxt, snapshot) {
-                  if(snapshot.connectionState == ConnectionState.done) {
-                    if(snapshot.hasData) return new MainRoom(uid: firebaseData.uid, userData: snapshot.data,);
-                  } else return Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      CircularProgressIndicator(),
-                      Padding(padding: EdgeInsets.all(5.0),),
-                      Text('Fetching user data...', style: TextStyle(fontSize: 12.0, color: Colors.blueGrey),),
-                    ],
-                  );
-                },
-              ),
-            ),
+            new MainRoom(uid: cacheData['uid']),
             new Text('Settings Page'),
           ],
         ),

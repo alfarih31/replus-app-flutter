@@ -19,7 +19,7 @@ class GoogleSignInButton extends StatelessWidget {
     return MaterialButton(
       onPressed: isActive ? handleTap : null,
       color: Colors.white,
-      elevation: 2.0,
+      elevation: 4.0,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.center,
