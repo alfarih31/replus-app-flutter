@@ -39,16 +39,16 @@ class API{
         _devices = json.decode(devices);
         Map deviceInRoom = {};
         _devices.forEach((device) {
-        String roomName = device['room'];
-        if(deviceInRoom.containsKey(roomName)) deviceInRoom[roomName].add(device);
-        else{
-          Map room = {'$roomName': new List()};
-          deviceInRoom.addAll(room);
-          deviceInRoom[roomName].add(device);
-        }
-      });
+          String roomName = device['room'];
+          if(deviceInRoom.containsKey(roomName)) deviceInRoom[roomName].add(device);
+          else{
+            Map room = {'$roomName': new List()};
+            deviceInRoom.addAll(room);
+            deviceInRoom['$roomName'].add(device);
+          }
+        });
       return deviceInRoom;
-    } else if (response.statusCode == 500) throw Exception('GET_DEVICES_FAILED: ${response.body}');
+    } else return Map();
   }
 
   Future <List> getUserData() async {
@@ -66,7 +66,7 @@ class API{
         throw Exception(e);
       }
       return userData;
-    } else if (response.statusCode == 500) throw Exception('GET_ROOMS_FAILED');
+    } else return List();
   }
 
   Future<bool> roomEdit(String name, String group, String roomID) async {
@@ -80,14 +80,14 @@ class API{
                 body: body,
                 headers: {'accesstoken':accessToken});
     if (response.statusCode == 200) return true;
-    else throw Exception('Editing Room Failed: ${response.body}');
+    else return false;
   }
 
   Future<bool> roomDelete(String roomID) async {
     response = await ioClient.delete('$apiV2/room-delete?uid=$uid&roomID=$roomID',
                 headers: {'accesstoken':accessToken});
     if (response.statusCode == 200) return true;
-    else throw Exception('Deleting Room Failed: ${response.body}');
+    else return false;
   }
 
   Future<String> roomAdd(String name) async {
@@ -99,7 +99,22 @@ class API{
                 body: body,
                 headers: {'accesstoken':accessToken});
     if (response.statusCode == 200) return response.body.toString();
-    else throw Exception('Adding Room Failed: ${response.body}');
+    else return 'false';
+  }
+
+  Future<bool> deviceAdd(String deviceID, String deviceCode, String room, String type) async {
+    final Map body = {
+      'deviceID': deviceID,
+      'uid': uid,
+      'deviceCode': deviceCode,
+      'room': room,
+      'type': type,
+    };
+    response = await ioClient.post('$apiV2/device-add',
+                body: body,
+                headers: {'accesstoken':accessToken});
+    if (response.statusCode == 200) return true;
+    else return false;
   }
 
   Future get initDone => _initDone;

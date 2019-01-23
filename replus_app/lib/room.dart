@@ -8,14 +8,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 final FlutterSecureStorage cache = FlutterSecureStorage();
 final chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+final floatingKey = Key(randomString(5));
 API apiClient;
 String _uid;
 ShowSnackBar snackBar;
 Map cacheData;
 List roomList;
 Map deviceList;
+Map roomState = new Map();
 
-String RandomString(int strlen) {
+String randomString(int strlen) {
   Random rnd = new Random(new DateTime.now().millisecondsSinceEpoch);
   String result = "";
   for (var i = 0; i < strlen; i++) {
@@ -101,11 +103,13 @@ class _ListItemController extends State<ListItemController> {
   final GlobalKey<ScaffoldState> scaffoldKey;
   final TextEditingController roomNameInputController = new TextEditingController();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+  bool onDeviceAdd = false;
   _ListItemController({this.scaffoldKey});
 
   void removeRoom(int index) {
     setState(() {
       deviceList.remove(roomList[index]['id']);
+      roomState.remove(roomList[index]['id']);
       roomList.removeAt(index);
       cache.write(key: 'roomList', value: json.encode(roomList));
       cache.write(key: 'deviceList', value: json.encode(deviceList));
@@ -127,132 +131,43 @@ class _ListItemController extends State<ListItemController> {
       });
   }
 
-  Future confirmAdd() async {
-    snackBar.show('Adding', true);
-    String roomID;
+  Future confirmAddRoom(Null) async {
+    snackBar.show('Adding', true, true);
+    String id;
     String tempTitle = roomNameInputController.text;
     roomNameInputController.clear();
-    try {
-      roomID = await apiClient.roomAdd(tempTitle);
-    } catch(err) {
+    id = await apiClient.roomAdd(tempTitle);
+    if (id == 'false') {
       await apiClient.refreshToken();
-      roomID = await apiClient.roomAdd(tempTitle);
+      id = await apiClient.roomAdd(tempTitle);
     }
-    snackBar.show('Adding', false);
-    addRoom(roomID, tempTitle);
+    if (id != 'false') {
+      addRoom(id, tempTitle);
+      snackBar.show('Adding', false, true);
+    } else snackBar.show('Adding', false, false);
   }
 
   void roomAddDialog() {
     showDialog(
       context: context,
       builder: (context) {
-        return Container(
-          color: Colors.white10,
-          alignment: AlignmentDirectional.center,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(25.0),
-            ),
-            width: 370.0,
-            height: 230.0,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: <Widget>[
-                SizedBox(
-                  width: 370,
-                  height: 55,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(25.0),
-                        topRight: Radius.circular(25.0),
-                      ),
-                      color: Colors.blue[300],
-                    ),
-                    //color: Colors.blue[300],
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: <Widget>[
-                        Padding(padding: EdgeInsets.all(4.0),),
-                        Icon(Icons.weekend, size: 45, color: Colors.white,),
-                        Padding(padding: EdgeInsets.all(4.0),),
-                        Material(
-                          color: Colors.transparent,
-                          child: Text('Add room', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white,),),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Container(
-                  color: Colors.transparent,
-                  width: 340.0,
-                  height: 175.0,
-                  child: Scaffold(
-                    backgroundColor: Colors.transparent,
-                    body: Form(
-                      key: formKey,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: <Widget>[
-                          Padding(padding: EdgeInsets.all(5.0),),
-                          Row(
-                            children: <Widget>[Text('Room Name:', style: TextStyle(color: Colors.blue, fontSize: 22.0),)],
-                          ),
-                          TextFormField(
-                            decoration: InputDecoration(
-                              hintText: 'Please type your desired room name...',
-                              fillColor: Colors.white,
-                              filled: true,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10.0),
-                                )
-                              ),
-                            controller: roomNameInputController,
-                            keyboardType: TextInputType.text,
-                            validator: (value) {
-                              if(value.isEmpty) return 'Please type desired room name';
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    floatingActionButton: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: <Widget>[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: <Widget>[
-                            IconButton(
-                              highlightColor: Colors.blueGrey[300],
-                              icon: Icon(Icons.clear, color: Colors.red, size: 35.0),
-                              onPressed: () => Navigator.of(context).pop(),
-                            ),
-                            Padding(padding: EdgeInsets.all(12.0),),
-                            IconButton(
-                              highlightColor: Colors.blueGrey[300],
-                              icon: Icon(Icons.save, color: Colors.blue, size: 35.0,),
-                              onPressed: () {
-                                if(formKey.currentState.validate()) {
-                                  Navigator.of(context).pop();
-                                  confirmAdd();
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    resizeToAvoidBottomPadding: false,
-                  ),
-                )
-              ],
-            ),
-          ),
+        return CustomDialog(
+          title: 'Add room',
+          hintText: 'Room name',
+          labelText: 'Enter room name',
+          caption: 'Room Name:',
+          validate: 'Please enter your desired room name!',
+          icon: Icons.weekend,
+          controller: roomNameInputController,
+          formKey: formKey,
+          onPressed: confirmAddRoom,
         );
       }
     );
+  }
+
+  void floatingState(bool state) {
+    setState(() => onDeviceAdd = state);
   }
 
   @override
@@ -267,17 +182,56 @@ class _ListItemController extends State<ListItemController> {
       key: scaffoldKey,
       backgroundColor: Colors.white,
       body: new ListView.builder(
-        key: new Key(RandomString(20)),
+        key: new Key(randomString(20)),
         itemCount: roomList.length,
         itemBuilder: (BuildContext context, index) {
           Map room = roomList[index];
           List devices = deviceList['${room['id']}'];
-          return new CreateListItem(index: index, room: room, devices: devices, removeRoom: removeRoom, scaffoldKey: scaffoldKey,);
+          bool isExpanded = roomState.containsKey(room['id']) ? roomState[room['id']] : false;
+          return new CreateListItem(index: index, room: room, devices: devices, removeRoom: removeRoom, floatingState: floatingState,isExpanded: isExpanded, scaffoldKey: scaffoldKey,);
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: () => roomAddDialog(),
+      floatingActionButton: onDeviceAdd ? null : Container(
+        width: 100.0,
+        color: Colors.transparent,
+        child: FloatingActionButton(
+          shape: RoundedRectangleBorder(
+            side: BorderSide(
+              width: 50.0,
+              color: Colors.transparent,
+            ),
+            borderRadius: BorderRadius.circular(50.0),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  Icon(Icons.weekend, size: 20.0),
+                  Icon(Icons.add, size: 15.0,),
+                ],
+              ),
+              Container(
+                height: 40.0,
+                width: 1.1,
+                color: Colors.lightBlue[200],
+                margin: const EdgeInsets.only(left: 10.0, right: 10.0),
+              ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  Text('Add',),
+                  Text('room', style: TextStyle(fontSize: 10.0),textAlign: TextAlign.center,),
+                ],
+              ),
+            ],
+          ),
+          onPressed: () => onDeviceAdd ? {} : roomAddDialog(),
+        ),
       ),
       resizeToAvoidBottomPadding: false,
     );
@@ -285,16 +239,26 @@ class _ListItemController extends State<ListItemController> {
 }
 
 class CreateListItem extends StatefulWidget{
-  CreateListItem({Key key, this.index, this.room, this.devices, this.removeRoom, this.scaffoldKey})
+  CreateListItem({
+    Key key,
+    this.index,
+    this.room,
+    this.devices,
+    this.removeRoom,
+    this.floatingState,
+    this.isExpanded,
+    this.scaffoldKey})
     : super(key : key);
   final Map room;
   final int index;
   final List devices;
   final ValueChanged<int> removeRoom;
+  final ValueChanged<bool> floatingState;
   final GlobalKey<ScaffoldState> scaffoldKey;
+  final bool isExpanded;
 
   @override
-  _CreateListItem createState() => new _CreateListItem(index: index, room: room, devices: devices, scaffoldKey: scaffoldKey,);
+  _CreateListItem createState() => new _CreateListItem(index: index, room: room, devices: devices, isExpanded: isExpanded, scaffoldKey: scaffoldKey,);
 }
 
 class _CreateListItem extends State<CreateListItem> {
@@ -302,20 +266,28 @@ class _CreateListItem extends State<CreateListItem> {
   final Map room;
   final List devices;
   final int index;
-  double iPos = 0.0;
-  double height = 250.0;
   final GlobalKey<ScaffoldState> scaffoldKey;
+  final GlobalKey<FormState> formKey = new GlobalKey();
   final TextEditingController titleController = new TextEditingController();
   String currentTitle;
-  _CreateListItem({this.index, this.room, this.devices, this.scaffoldKey});
+  _CreateListItem({this.index, this.room, this.devices, this.isExpanded, this.scaffoldKey});
 
-  void changeTrailing(bool val) => setState(() => isExpanded = val);
+  void changeTrailing(bool state) => setState(() {
+    roomState.update(room['id'], (dynamic _state) => state, ifAbsent: () => state);
+    isExpanded = state;
+  });
 
   void changeState(bool state) => setState(() => onRename = state);
 
   Widget createItem(String title, IconData icon, String subtitle, Function handleTap) {
-    return GestureDetector(
-      onTap: handleTap,
+    return RaisedButton(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
+      animationDuration: Duration(milliseconds: 1000),
+      splashColor: Colors.blue,
+      elevation: 4.0,
+      highlightColor: Colors.blue[100],
+      color: Colors.white,
+      onPressed: handleTap,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -334,36 +306,36 @@ class _CreateListItem extends State<CreateListItem> {
     );
   }
 
-  Future confirmRename() async {
-    if(currentTitle == titleController.text) return changeState(!onRename);
-    setState(()=> isEnabled = !isEnabled);
-    snackBar.show('Renaming', true);
-    try {
-      snackBar.show('Renaming',
-                !await apiClient.roomEdit(titleController.text, 'undefined', room['id']));
-    } catch(err) {
-      await apiClient.refreshToken();
-      snackBar.show('Renaming',
-                !await apiClient.roomEdit(titleController.text, 'undefined', room['id']));
+  Future confirmRoomRename() async {
+    if(currentTitle == titleController.text) return setState(() => onRename = !onRename);
+    if(formKey.currentState.validate()) {
+      setState(()=> isEnabled = !isEnabled);
+      snackBar.show('Renaming', true, true);
+      bool status = await apiClient.roomEdit(titleController.text, 'undefined', room['id']);
+      if (!status) {
+        await apiClient.refreshToken();
+        status = await apiClient.roomEdit(titleController.text, 'undefined', room['id']);
+      }
+      snackBar.show('Renaming', false, status);
+      if (status) {
+        currentTitle = titleController.text;
+        roomList[index]['name'] = currentTitle;
+        await cache.write(key: 'roomList', value: json.encode(roomList));
+        setState(() {isEnabled = !isEnabled; onRename = !onRename;});
+      }
     }
-    currentTitle = titleController.text;
-    roomList[index]['name'] = currentTitle;
-    await cache.write(key: 'roomList', value: json.encode(roomList));
-    setState(() {isEnabled = !isEnabled; onRename = !onRename;});
   }
 
-  Future confirmDelete() async {
+  Future confirmRoomDelete() async {
     setState(() => isEnabled = !isEnabled);
-    snackBar.show('Deleting', true);
-    try{
-      snackBar.show('Deleting',
-                !await apiClient.roomDelete(room['id']));
-    } catch(err) {
+    snackBar.show('Deleting', true, true);
+    bool status = await apiClient.roomDelete(room['id']);
+    if (!status) {
       await apiClient.refreshToken();
-      snackBar.show('Deleting',
-                !await apiClient.roomDelete(room['id']));
+      status = await apiClient.roomDelete(room['id']);
     }
-    widget.removeRoom(index);
+    snackBar.show('Deleting', false, status);
+    if(status) widget.removeRoom(index);
   }
 
   void roomDeleteDialog() {
@@ -404,9 +376,10 @@ class _CreateListItem extends State<CreateListItem> {
                             fillColor: Colors.yellow[500],
                           ),
                         ),
+                        Padding(padding: EdgeInsets.all(5.0),),
                         SizedBox(
                           width: 318,
-                          height: 46,
+                          height: 35,
                           child: Card(
                             elevation: 0.0,
                             color: Colors.white,
@@ -415,6 +388,11 @@ class _CreateListItem extends State<CreateListItem> {
                               textAlign: TextAlign.center,
                             ),
                           ),
+                        ),
+                        Container(
+                          height: 1.0,
+                          width: 250,
+                          color: Colors.grey[300],
                         ),
                       ],
                     ),
@@ -443,7 +421,7 @@ class _CreateListItem extends State<CreateListItem> {
                         ),
                         onPressed: () {
                           Navigator.of(context).pop();
-                          confirmDelete();
+                          confirmRoomDelete();
                         },
                       ),
                   ],
@@ -456,77 +434,42 @@ class _CreateListItem extends State<CreateListItem> {
     );
   }
 
+  Future confirmAddDevice(List data) async {
+    Map device = {
+      'name': data[0],
+      'room': room['id'],
+      'type': data[2],
+      'owner': _uid,
+      'command': new Map(),
+      };
+    deviceList['${room['id']}'].add(device);
+    try {
+      await apiClient.deviceAdd(
+        data[0], data[1], room['id'], data[2]);
+      await cache.write(key: 'deviceList', value: json.encode(deviceList));
+      //devices.add(device);
+      return true;
+    } catch (err) {
+      String _err = err.toString();
+      print(_err);
+      if (_err == 'WRONG_TOKEN' || _err == "Exception: jwt malformed") {
+        await apiClient.refreshToken();
+        await apiClient.deviceAdd(
+          data[0], data[1], room['id'], data[2]);
+        await cache.write(key: 'deviceList', value: json.encode(deviceList));
+        //devices.add(device);
+        return true;
+      } else return false;
+    }
+  }
+
   void showDeviceBottomSheet() {
+    widget.floatingState(true);
     scaffoldKey.currentState.showBottomSheet(
       (BuildContext context) {
-        print(height);
-        return new GestureDetector(
-          onVerticalDragStart: (DragStartDetails details) {
-            iPos = details.globalPosition.dx;
-          },
-          onVerticalDragUpdate: (DragUpdateDetails details) {
-            double distance = details.globalPosition.dx - iPos;
-            double addition = distance/100;
-            showDeviceBottomSheet();
-          },
-          onVerticalDragEnd: (DragEndDetails details) {
-            iPos = 0.0;
-            setState(() => height);
-          },
-          child: Container(
-            color: Colors.transparent,
-            child: Container(
-              height: height,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(15.0),
-                  topRight: Radius.circular(15.0),
-                ),
-                color: Colors.white
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: <Widget>[
-                  SizedBox(
-                    height: 55,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(15.0),
-                          topRight: Radius.circular(15.0),
-                        ),
-                        color: Colors.blue[300],
-                      ),
-                      //color: Colors.blue[300],
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: <Widget>[
-                          Padding(padding: EdgeInsets.all(4.0),),
-                          Icon(Icons.weekend, size: 45, color: Colors.white,),
-                          Padding(padding: EdgeInsets.all(4.0),),
-                          Material(
-                            color: Colors.transparent,
-                            child: Text('Add room', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white,),),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  devices != null ? ListView.builder(
-                    itemCount: devices.length,
-                    itemBuilder: (context, index) {
-                      return Card(
-                        child: Text(devices[index]['room']),
-                      );
-                    },
-                  ) : Container(width: 0,height: 0,),
-                ],
-              ),
-            ),
-          ),
-        );
+        return DeviceMenuBottomSheet(devices: devices, room: room['name'], saveDevice: confirmAddDevice,);
       }
-    );
+    ).closed.whenComplete(() => widget.floatingState(false));
   }
 
   Widget showDetail() {
@@ -534,12 +477,15 @@ class _CreateListItem extends State<CreateListItem> {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: <Widget>[
         Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
           child: createItem('Devices', Icons.devices, devices == null ? '0' : '${devices.length}', showDeviceBottomSheet),
         ),
         Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
           child: createItem('Remotes', Icons.settings_remote, '${room['remotes'].length}', null),
         ),
         Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
           child: createItem('Location', Icons.room, 'Location info', null),
         ),
       ],
@@ -552,16 +498,22 @@ class _CreateListItem extends State<CreateListItem> {
       child: Column(
         children: <Widget>[
           ExpansionTile(
-            trailing: isExpanded ? Icon(Icons.keyboard_arrow_down) : Icon(Icons.keyboard_arrow_up),
+            initiallyExpanded: isExpanded,
             title: Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
                 Icon(Icons.weekend),
                 Padding(padding: EdgeInsets.all(5.0),),
                 Flexible(
-                  child: onRename ? TextFormField(
-                    controller: titleController,
-                    ) : Text(currentTitle, style: TextStyle(fontWeight: FontWeight.bold,),),
+                  child: onRename ? Form(
+                    key: formKey,
+                    child: TextFormField(
+                      controller: titleController,
+                      validator: (value) {
+                        if(value.isEmpty) return 'Room name cannot be empty!';
+                      },
+                    )
+                  ) : Text(currentTitle, style: TextStyle(fontWeight: FontWeight.bold,),),
                 ),
               ],
             ),
@@ -588,7 +540,7 @@ class _CreateListItem extends State<CreateListItem> {
                           Text(onRename ? 'Ok' : 'Rename', style: TextStyle(color: isEnabled ? Colors.blue : Colors.grey),),
                         ],
                       ),
-                      onPressed: () {(onRename && isEnabled) ? confirmRename() : (isEnabled) ? changeState(!onRename) : null;},
+                      onPressed: () {(onRename && isEnabled) ? confirmRoomRename() : (isEnabled) ? changeState(!onRename) : null;},
                     )
                   ],
                 ),
@@ -604,7 +556,6 @@ class _CreateListItem extends State<CreateListItem> {
   @override
   void initState() {
     super.initState();
-    isExpanded = false;
     onRename = false;
     isEnabled = true;
     currentTitle = room['name'];
