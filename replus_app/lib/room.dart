@@ -103,7 +103,7 @@ class _ListItemController extends State<ListItemController> {
   final GlobalKey<ScaffoldState> scaffoldKey;
   final TextEditingController roomNameInputController = new TextEditingController();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-  bool onDeviceAdd = false;
+  bool onDevice = false;
   _ListItemController({this.scaffoldKey});
 
   void removeRoom(int index) {
@@ -167,7 +167,7 @@ class _ListItemController extends State<ListItemController> {
   }
 
   void floatingState(bool state) {
-    setState(() => onDeviceAdd = state);
+    setState(() => onDevice = state);
   }
 
   @override
@@ -191,7 +191,7 @@ class _ListItemController extends State<ListItemController> {
           return new CreateListItem(index: index, room: room, devices: devices, removeRoom: removeRoom, floatingState: floatingState,isExpanded: isExpanded, scaffoldKey: scaffoldKey,);
         },
       ),
-      floatingActionButton: onDeviceAdd ? null : Container(
+      floatingActionButton: onDevice ? null : Container(
         width: 100.0,
         color: Colors.transparent,
         child: FloatingActionButton(
@@ -230,7 +230,7 @@ class _ListItemController extends State<ListItemController> {
               ),
             ],
           ),
-          onPressed: () => onDeviceAdd ? {} : roomAddDialog(),
+          onPressed: () => onDevice ? {} : roomAddDialog(),
         ),
       ),
       resizeToAvoidBottomPadding: false,
@@ -442,32 +442,39 @@ class _CreateListItem extends State<CreateListItem> {
       'owner': _uid,
       'command': new Map(),
       };
-    deviceList['${room['id']}'].add(device);
-    try {
-      await apiClient.deviceAdd(
+    bool status = await apiClient.deviceAdd(
         data[0], data[1], room['id'], data[2]);
-      await cache.write(key: 'deviceList', value: json.encode(deviceList));
-      //devices.add(device);
-      return true;
-    } catch (err) {
-      String _err = err.toString();
-      print(_err);
-      if (_err == 'WRONG_TOKEN' || _err == "Exception: jwt malformed") {
-        await apiClient.refreshToken();
-        await apiClient.deviceAdd(
-          data[0], data[1], room['id'], data[2]);
-        await cache.write(key: 'deviceList', value: json.encode(deviceList));
-        //devices.add(device);
-        return true;
-      } else return false;
+    if(!status) {
+      await apiClient.refreshToken();
+      status = await apiClient.deviceAdd(
+        data[0], data[1], room['id'], data[2]);
     }
+    if(status) {
+      deviceList['${room['id']}'].add(device);
+      await cache.write(key: 'deviceList', value: json.encode(deviceList));
+      return true;
+    } else return false;
+  }
+
+  Future confirmDeleteDevice(String deviceName, int index) async {
+    bool status = await apiClient.deviceDelete(deviceName);
+    if(!status) {
+      await apiClient.refreshToken();
+      status = await apiClient.deviceDelete(deviceName);
+    }
+    if(status) {
+      devices.removeAt(index);
+      deviceList['${room['id']}'].toList().removeAt(index);
+      await cache.write(key: 'deviceList', value: json.encode(deviceList));
+      return true;
+    } else return false;
   }
 
   void showDeviceBottomSheet() {
     widget.floatingState(true);
     scaffoldKey.currentState.showBottomSheet(
       (BuildContext context) {
-        return DeviceMenuBottomSheet(devices: devices, room: room['name'], saveDevice: confirmAddDevice,);
+        return DeviceMenuBottomSheet(devices: devices, room: room['name'], saveDevice: confirmAddDevice, deleteDevice: confirmDeleteDevice,);
       }
     ).closed.whenComplete(() => widget.floatingState(false));
   }

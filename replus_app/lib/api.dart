@@ -117,5 +117,11 @@ class API{
     else return false;
   }
 
+  Future <bool> deviceDelete(String device) async {
+    response = await ioClient.delete('$apiV2/device-delete?uid=$uid&device=$device', headers: {'accesstoken': accessToken});
+    if (response.statusCode == 200) {
+      return true;
+    } else return false;
+  }
   Future get initDone => _initDone;
 }
