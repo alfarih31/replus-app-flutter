@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:replus_app/widgets/slidable/slidable.dart';
+import 'package:replus_app/widgets/flutter_slidable/slidable.dart';
 
 const bool _kCloseOnTap = true;
 
