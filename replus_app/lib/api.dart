@@ -5,8 +5,8 @@ import 'dart:convert';
 import 'package:http/io_client.dart';
 class API{
   final String apiV2 = 'https://core.replus.co/api-v2';
-  Future _initDone;
   final String uid;
+  Future _initDone;
   String accessToken;
   HttpClient httpClient;
   IOClient ioClient;
@@ -33,7 +33,7 @@ class API{
   Future <Map> getDevices() async {
     List<dynamic> _devices;
     String devices;
-    response = await ioClient.get('$apiV2/get-devices?uid=$uid', headers: {'accesstoken': accessToken});
+    response = await ioClient.get('$apiV2/get-devices?uid=$uid', headers: {'accesstoken': '$accessToken'});
     if (response.statusCode == 200) {
         devices = response.body;
         _devices = json.decode(devices);
@@ -51,17 +51,29 @@ class API{
     } else return Map();
   }
 
+  Future<List> getGroups() async {
+    List<dynamic> _groups;
+    String groups;
+    response = await ioClient.get('$apiV2/get-groups?uid=$uid', headers: {'accesstoken': '$accessToken'});
+    if (response.statusCode == 200) {
+        groups = response.body;
+        _groups = json.decode(groups);
+      return _groups;
+    } else return new List();
+  }
+
   Future <List> getUserData() async {
     List<dynamic> _rooms;
     List<dynamic> userData = new List();
     String rooms;
-    response = await ioClient.get('$apiV2/get-rooms?uid=$uid', headers: {'accesstoken':accessToken});
+    response = await ioClient.get('$apiV2/get-rooms?uid=$uid', headers: {'accesstoken':'$accessToken'});
     if (response.statusCode == 200) {
       rooms = response.body;
       _rooms = json.decode(rooms);
       userData.add(_rooms);
       try {
         userData.add([await getDevices()]);
+        userData.add(await getGroups());
       } catch (e) {
         throw Exception(e);
       }
@@ -78,14 +90,14 @@ class API{
     };
     response = await ioClient.put('$apiV2/room-edit',
                 body: body,
-                headers: {'accesstoken':accessToken});
+                headers: {'accesstoken':'$accessToken'});
     if (response.statusCode == 200) return true;
     else return false;
   }
 
   Future<bool> roomDelete(String roomID) async {
     response = await ioClient.delete('$apiV2/room-delete?uid=$uid&roomID=$roomID',
-                headers: {'accesstoken':accessToken});
+                headers: {'accesstoken':'$accessToken'});
     if (response.statusCode == 200) return true;
     else return false;
   }
@@ -97,7 +109,7 @@ class API{
     };
     response = await ioClient.post('$apiV2/room-add',
                 body: body,
-                headers: {'accesstoken':accessToken});
+                headers: {'accesstoken':'$accessToken'});
     if (response.statusCode == 200) return response.body.toString();
     else return 'false';
   }
@@ -112,13 +124,13 @@ class API{
     };
     response = await ioClient.post('$apiV2/device-add',
                 body: body,
-                headers: {'accesstoken':accessToken});
+                headers: {'accesstoken':'$accessToken'});
     if (response.statusCode == 200) return true;
     else return false;
   }
 
   Future <bool> deviceDelete(String device) async {
-    response = await ioClient.delete('$apiV2/device-delete?uid=$uid&device=$device', headers: {'accesstoken': accessToken});
+    response = await ioClient.delete('$apiV2/device-delete?uid=$uid&device=$device', headers: {'accesstoken': '$accessToken'});
     if (response.statusCode == 200) {
       return true;
     } else return false;

@@ -6,7 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:replus_app/widgets/google_sign_in_btn.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:replus_app/api.dart';
-import 'package:replus_app/room.dart';
+import 'package:replus_app/routes/rooms.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -32,6 +32,7 @@ class MyApp extends StatelessWidget {
       title: 'Replus App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        accentColor: Colors.blueAccent,
       ),
       home: new MainPage(),
     );

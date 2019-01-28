@@ -161,6 +161,7 @@ class SlideToDismissDrawerDelegate extends SlideToDismissDelegate {
     ).animate(ctx.state.overallMoveAnimation);
 
     return new Container(
+      color: Colors.transparent,
       child: new Stack(
         children: <Widget>[
           new Positioned.fill(
@@ -399,6 +400,7 @@ abstract class SlidableStackDelegate extends SlidableDelegate {
 
     if (ctx.state.actionsMoveAnimation.value != .0) {
       return new Container(
+        color: Colors.transparent,
         child: new Stack(
           children: <Widget>[
             buildStackActions(
@@ -1149,9 +1151,10 @@ class SlidableState extends State<Slidable>
           return new SizeTransition(
               sizeFactor: _resizeAnimation,
               axis: directionIsXAxis ? Axis.vertical : Axis.horizontal,
-              child: new SizedBox(
+              child: new Container(
                 width: _sizePriorToCollapse.width,
                 height: _sizePriorToCollapse.height,
+                color: Colors.transparent,
                 child: content,
               ));
         }

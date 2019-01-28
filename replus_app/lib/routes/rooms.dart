@@ -12,9 +12,12 @@ final floatingKey = Key(randomString(5));
 API apiClient;
 String _uid;
 ShowSnackBar snackBar;
-Map cacheData;
-List roomList;
 Map deviceList;
+List roomList;
+Map cacheData;
+
+List<dynamic> groupList;
+List<String> groups = ['No group', '1', '2'];
 Map roomState = new Map();
 
 String randomString(int strlen) {
@@ -25,6 +28,7 @@ String randomString(int strlen) {
   }
   return result;
 }
+
 class MainRoom extends StatefulWidget{
   MainRoom({this.uid});
   final String uid;
@@ -47,13 +51,16 @@ class _MainRoom extends State<MainRoom> with AutomaticKeepAliveClientMixin<MainR
     if(cacheData['fetched'] == '1') {
       deviceList= json.decode(cacheData['deviceList']);
       roomList = json.decode(cacheData['roomList']);
+      groupList = json.decode(cacheData['groupList']);
     } else {
       await apiClient.refreshToken();
       List userData = await apiClient.getUserData();
       roomList = userData[0];
       deviceList = userData[1][0];
+      groupList = userData[2];
       await cache.write(key: 'deviceList', value: json.encode(deviceList));
       await cache.write(key: 'roomList', value: json.encode(roomList));
+      await cache.write(key: 'groupList', value: json.encode(groupList));
       await cache.write(key: 'fetched', value: '1');
     }
     return true;
@@ -93,7 +100,7 @@ class _MainRoom extends State<MainRoom> with AutomaticKeepAliveClientMixin<MainR
 
 class ListItemController extends StatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
-  ListItemController({this.scaffoldKey});
+  ListItemController({this.scaffoldKey,});
 
   @override
  _ListItemController createState() => new _ListItemController(scaffoldKey: scaffoldKey,);
@@ -103,6 +110,8 @@ class _ListItemController extends State<ListItemController> {
   final GlobalKey<ScaffoldState> scaffoldKey;
   final TextEditingController roomNameInputController = new TextEditingController();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+  Map deviceList;
+  List roomList;
   bool onDevice = false;
   _ListItemController({this.scaffoldKey});
 
@@ -156,7 +165,7 @@ class _ListItemController extends State<ListItemController> {
           hintText: 'Room name',
           labelText: 'Enter room name',
           caption: 'Room Name:',
-          validate: 'Please enter your desired room name!',
+          validate: 'Room name cannot be empty',
           icon: Icons.weekend,
           controller: roomNameInputController,
           formKey: formKey,
@@ -262,14 +271,16 @@ class CreateListItem extends StatefulWidget{
 }
 
 class _CreateListItem extends State<CreateListItem> {
-  bool isExpanded, onRename, isEnabled;
+  bool isExpanded, onRename, isEnabled, onGroupAdd;
   final Map room;
   final List devices;
   final int index;
   final GlobalKey<ScaffoldState> scaffoldKey;
-  final GlobalKey<FormState> formKey = new GlobalKey();
+  final GlobalKey<FormState> titleFormKey = new GlobalKey();
+  final GlobalKey<FormState> groupFormKey = new GlobalKey();
   final TextEditingController titleController = new TextEditingController();
-  String currentTitle;
+  final TextEditingController groupController = new TextEditingController();
+  String currentTitle, currentGroup, tempGroup;
   _CreateListItem({this.index, this.room, this.devices, this.isExpanded, this.scaffoldKey});
 
   void changeTrailing(bool state) => setState(() {
@@ -308,7 +319,7 @@ class _CreateListItem extends State<CreateListItem> {
 
   Future confirmRoomRename() async {
     if(currentTitle == titleController.text) return setState(() => onRename = !onRename);
-    if(formKey.currentState.validate()) {
+    if(titleFormKey.currentState.validate()) {
       setState(()=> isEnabled = !isEnabled);
       snackBar.show('Renaming', true, true);
       bool status = await apiClient.roomEdit(titleController.text, 'undefined', room['id']);
@@ -349,34 +360,26 @@ class _CreateListItem extends State<CreateListItem> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10.0),
+              border: Border.all(
+                color: Colors.yellow[700],
+                width: 1.0,
+              )
             ),
             width: 320,
-            height: 187,
+            height: 152,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
                 SizedBox(
                   width: 319,
-                  height: 138,
+                  height: 102,
                   child: Card(
                     elevation: 0.0,
                     color: Colors.white,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: <Widget>[
-                        Padding(padding: EdgeInsets.all(2.0),),
-                        SizedBox(
-                          width: 80,
-                          height: 80,
-                          child: RawMaterialButton(
-                            shape: CircleBorder(),
-                            elevation: 0.5,
-                            child: Icon(Icons.warning, size: 53, color: Colors.yellow[700],),
-                            onPressed: () {},
-                            fillColor: Colors.yellow[500],
-                          ),
-                        ),
-                        Padding(padding: EdgeInsets.all(5.0),),
+                        Icon(Icons.warning, size: 53, color: Colors.yellow[700],),
                         SizedBox(
                           width: 318,
                           height: 35,
@@ -405,8 +408,8 @@ class _CreateListItem extends State<CreateListItem> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: <Widget>[
-                            Icon(Icons.cancel, color: Colors.red,),
-                            Text('Cancel', style: TextStyle(color: Colors.red),),
+                            Icon(Icons.cancel, color: Colors.blue,),
+                            Text('Cancel', style: TextStyle(color: Colors.blue),),
                           ],
                         ),
                         onPressed: () => Navigator.of(context).pop(),
@@ -415,8 +418,8 @@ class _CreateListItem extends State<CreateListItem> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: <Widget>[
-                            Icon(Icons.check, color: Colors.blue,),
-                            Text('Ok', style: TextStyle(color: Colors.blue),),
+                            Icon(Icons.check, color: Colors.red),
+                            Text('Ok', style: TextStyle(color: Colors.red),),
                           ],
                         ),
                         onPressed: () {
@@ -450,6 +453,7 @@ class _CreateListItem extends State<CreateListItem> {
         data[0], data[1], room['id'], data[2]);
     }
     if(status) {
+      print(deviceList['${room['id']}']);
       deviceList['${room['id']}'].add(device);
       await cache.write(key: 'deviceList', value: json.encode(deviceList));
       return true;
@@ -502,30 +506,96 @@ class _CreateListItem extends State<CreateListItem> {
   Widget createTile() {
     return Card(
       elevation: 2.0,
-      child: Column(
-        children: <Widget>[
-          ExpansionTile(
-            initiallyExpanded: isExpanded,
-            title: Row(
+      child: ExpansionTile(
+        initiallyExpanded: isExpanded,
+        leading: Icon(Icons.weekend),
+        title: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
-                Icon(Icons.weekend),
-                Padding(padding: EdgeInsets.all(5.0),),
+                Icon(Icons.group, size: 16,),
+                Padding(padding: EdgeInsets.only(right: 2.0),),
+                onGroupAdd ? Flexible(
+                  child: DropdownButton<String>(
+                    value: tempGroup,
+                    isExpanded: true,
+                    isDense: true,
+                    onChanged: (String newGroup) => setState(() => tempGroup = newGroup),
+                    items: [{'name':'No Group'}].map((dynamic group) {
+                        return new DropdownMenuItem<String>(
+                          value: group['name'],
+                          child: new Text(group['name']),
+                        );
+                      }).toList(),
+                  ),
+                ) : Text(currentGroup,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold),
+                ),
+                onGroupAdd ? Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: <Widget>[
+                    IconButton(
+                      onPressed:  () => setState(() {
+                        onGroupAdd = !onGroupAdd;
+                        isEnabled = !isEnabled;
+                        tempGroup = currentGroup;
+                        }),
+                      icon: Icon(Icons.close),
+                      color: Colors.red,
+                    ),
+                    IconButton(
+                      onPressed:  () => setState(() {
+                        onGroupAdd = !onGroupAdd;
+                        isEnabled = !isEnabled;
+                        currentGroup = tempGroup;
+                        }),
+                      icon: Icon(Icons.check),
+                      color: Colors.green,
+                    ),
+                  ],
+                ) : Container(width: 0, height: 0,),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: <Widget>[
+                Padding(padding: EdgeInsets.only(right: 18.0),),
                 Flexible(
                   child: onRename ? Form(
-                    key: formKey,
+                    key: titleFormKey,
                     child: TextFormField(
                       controller: titleController,
                       validator: (value) {
                         if(value.isEmpty) return 'Room name cannot be empty!';
                       },
                     )
-                  ) : Text(currentTitle, style: TextStyle(fontWeight: FontWeight.bold,),),
+                  ) : Text(currentTitle,),
                 ),
               ],
             ),
+          ],
+        ),
+        children: <Widget>[
+          showDetail(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
-              showDetail(),
+              FlatButton(
+                onPressed: onGroupAdd ? null : () => setState(() {onGroupAdd = !onGroupAdd; isEnabled = !isEnabled;}),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Icon(Icons.group_add),
+                    Padding(padding: EdgeInsets.only(right: 5.0),),
+                    Text('Add to group'),
+                  ],
+                ),
+              ),
               ButtonTheme.bar(
                 child: ButtonBar(
                   children: <Widget>[
@@ -537,7 +607,7 @@ class _CreateListItem extends State<CreateListItem> {
                           Text(onRename ? 'Cancel' : 'Delete', style: TextStyle(color: isEnabled ? Colors.red : Colors.grey)),
                         ],
                       ),
-                      onPressed: () {(onRename && isEnabled) ? changeState(!onRename) : (isEnabled) ? roomDeleteDialog(): null;},
+                      onPressed: () {(onRename && isEnabled) ? changeState(!onRename) : (isEnabled) ? roomDeleteDialog() : null;},
                     ),
                     FlatButton(
                       child: Row(
@@ -553,9 +623,9 @@ class _CreateListItem extends State<CreateListItem> {
                 ),
               ),
             ],
-            onExpansionChanged: changeTrailing,
           ),
         ],
+        onExpansionChanged: changeTrailing,
       ),
     );
   }
@@ -565,8 +635,12 @@ class _CreateListItem extends State<CreateListItem> {
     super.initState();
     onRename = false;
     isEnabled = true;
+    onGroupAdd = false;
     currentTitle = room['name'];
+    currentGroup = room.containsKey('group') ? room['group'] : 'No Group';
     titleController.text = currentTitle;
+    groupController.text = currentGroup;
+    tempGroup = currentGroup;
   }
 
   @override

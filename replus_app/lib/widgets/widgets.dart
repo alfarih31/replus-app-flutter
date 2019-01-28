@@ -205,11 +205,14 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
           borderRadius: BorderRadius.circular(10.0),
         ),
       ),
-      maxLength: 4,
+      maxLength: 6,
       controller: widget.deviceNameInput,
       keyboardType: TextInputType.text,
       validator: (value) {
-        if(value.isEmpty) return 'Please input device name!';
+        if(value.isEmpty) return 'Device name cannot be empty';
+        else if(type == 'replus-remote') {
+            if(value.length != 4) return 'Replus-remote name\'s have 4 characters long';
+        }
       },
     );
   }
@@ -229,7 +232,7 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
       controller: widget.activationCodeInput,
       keyboardType: TextInputType.text,
       validator: (value) {
-        if(value.isEmpty) return 'Please input activation code!';
+        if(value.isEmpty) return 'Activation code cannot be empty';
       },
     );
   }
@@ -261,8 +264,6 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
   void handleOpen(bool isOpen) {
     isOpened = isOpen;
   }
-
-  void handleOpenAnimation(Animation<double> openAnimation){}
 
   void handleChoice(int choice){
     setState(() {
@@ -303,15 +304,19 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10.0),
+              border: Border.all(
+                color: Colors.yellow[700],
+                width: 1.0
+              )
             ),
-            width: 320,
-            height: 187,
+            width: 337,
+            height: 152,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
                 SizedBox(
-                  width: 319,
-                  height: 138,
+                  width: 336,
+                  height: 102,
                   child: Card(
                     elevation: 0.0,
                     color: Colors.white,
@@ -319,20 +324,9 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: <Widget>[
                         Padding(padding: EdgeInsets.all(2.0),),
+                        Icon(Icons.warning, size: 53, color: Colors.yellow[700],),
                         SizedBox(
-                          width: 80,
-                          height: 80,
-                          child: RawMaterialButton(
-                            shape: CircleBorder(),
-                            elevation: 0.5,
-                            child: Icon(Icons.warning, size: 53, color: Colors.yellow[700],),
-                            onPressed: () {},
-                            fillColor: Colors.yellow[500],
-                          ),
-                        ),
-                        Padding(padding: EdgeInsets.all(5.0),),
-                        SizedBox(
-                          width: 318,
+                          width: 335,
                           height: 35,
                           child: Card(
                             elevation: 0.0,
@@ -359,8 +353,8 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: <Widget>[
-                            Icon(Icons.cancel, color: Colors.red,),
-                            Text('Cancel', style: TextStyle(color: Colors.red),),
+                            Icon(Icons.cancel, color: Colors.blue,),
+                            Text('Cancel', style: TextStyle(color: Colors.blue),),
                           ],
                         ),
                         onPressed: () => setState(() => Navigator.of(context).pop()),
@@ -369,8 +363,8 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: <Widget>[
-                            Icon(Icons.check, color: Colors.blue,),
-                            Text('Ok', style: TextStyle(color: Colors.blue),),
+                            Icon(Icons.check, color: Colors.red),
+                            Text('Ok', style: TextStyle(color: Colors.red),),
                           ],
                         ),
                         onPressed: () {
@@ -388,7 +382,7 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
     );
   }
 
-  Future confirmSave() async {
+  Future confirmDeviceAdd() async {
     String deviceName = widget.deviceNameInput.text;
     String deviceCode = widget.activationCodeInput.text;
     if (formKey.currentState.validate()){
@@ -406,32 +400,41 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
   Widget buildDevice(Map device, int index) {
     return Slidable(
       controller: deviceSlide,
-      delegate: SlidableStrechDelegate(),
+      delegate: SlidableDrawerDelegate(),
       actionExtentRatio: 0.25,
       movementDuration: Duration(milliseconds: 300),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10.0),
-          border: Border.all(
-            color: Colors.green,
-            width: 2.0,
+          border: Border(
+            top: BorderSide(
+              color: Colors.blueGrey,
+            ),
+            bottom: BorderSide(
+              color: Colors.blueGrey,
+            ),
           ),
+          color: Colors.transparent,
         ),
-        margin: EdgeInsets.only(left: 10.0, right: 10.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.start,
           children: <Widget>[
             Padding(
-              padding: EdgeInsets.only(left: 10.0, right: 10.0),
-              child: Icon(Icons.settings_remote, size: 30.0),
-            ),
-            Container(
-              child: Text('${device['name']}', style: TextStyle(
-                fontSize: 30.0,
-                fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
+              padding: EdgeInsets.only(left: 10.0, right: 7.0),
+              child: CircleAvatar(
+                backgroundColor: Colors.grey[200],
+                minRadius: 5.0,
+                maxRadius: 35,
+                child: Icon(device['type'] == 'replus-remote' ?
+                  Icons.settings_remote : Icons.remove_red_eye,
+                  size: 40.0, color: Colors.blue[300],),
               ),
+            ),
+            Text('${device['name']}', style: TextStyle(
+              fontSize: 30.0,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue,
+              ),
+              textAlign: TextAlign.center,
             ),
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -440,12 +443,37 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: <Widget>[
                     Padding(
-                      padding: EdgeInsets.only(left: 5.0),
+                      padding: EdgeInsets.only(left: 10.0),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Text('Room: ${widget.room}'),
-                          Text('Type: ${device['type']}'),
+                          Row(
+                            children: <Widget>[
+                              Icon(Icons.weekend),
+                              Padding(padding: EdgeInsets.all(2.0),),
+                              Text('Room: ${widget.room}'),
+                            ],
+                          ),
+                          Row(
+                            children: <Widget>[
+                              Text('Type: ${device['type']}'),
+                            ],
+                          ),
+                          Padding(padding: EdgeInsets.all(5.0),),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: <Widget>[
+                              Icon(Icons.repeat_one),
+                              Padding(padding: EdgeInsets.all(2.0),),
+                              Column(
+                                children: <Widget>[
+                                  Text('On Command: ${device['command']['on']}'),
+                                  Text('Off Command: ${device['command']['off']}'),
+                                ],
+                              )
+                            ],
+                          ),
                         ],
                       ),
                     )
@@ -458,11 +486,17 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
       ),
       secondaryActions: <Widget>[
         IconSlideAction(
+          caption: 'Setup',
+          color: Colors.blue[300],
+          onTap: null,
+          icon: Icons.settings,
+        ),
+        IconSlideAction(
           caption: 'Delete',
-          icon: Icons.delete,
           color: Colors.red,
           onTap: () => deviceDeleteDialog(index),
-        )
+          icon: Icons.delete,
+        ),
       ],
     );
   }
@@ -474,7 +508,7 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
     radioVal = -1;
     isOpened = false;
     deviceSlide = SlidableController(
-      onSlideAnimationChanged: handleOpenAnimation,
+      onSlideAnimationChanged: (Animation<double> openAnimation) => {},
       onSlideIsOpenChanged: handleOpen,
     );
     super.initState();
@@ -499,7 +533,7 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
           ),
           color: Colors.transparent,
         ),
-        margin: EdgeInsets.only(left: 7.0, right: 7.0,),
+        margin: EdgeInsets.only(left: 7.0, right: 7.0, top: 10.0),
         child: AppExpansionTile(
           key: expansionTile,
           leading: Icon(Icons.devices, color: Colors.blue, size: 30.0,),
@@ -551,7 +585,7 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
                         child: Icon(Icons.clear_all, color: Colors.red, size: 40,),
                       ),
                       FlatButton(
-                        onPressed: confirmSave,
+                        onPressed: confirmDeviceAdd,
                         child: Icon(Icons.save, color: Colors.blue, size: 40,),
                       ),
                     ],
@@ -563,12 +597,11 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
           onExpansionChanged: (state) => setState(() => isExpanded = !isExpanded),
         ),
       ),
-      Padding(padding: EdgeInsets.all(5.0),),
       Container(
         height: 1.1,
         width: 100,
         color: Colors.grey[300],
-        margin: const EdgeInsets.only(left: 10.0, right: 10.0),
+        margin: const EdgeInsets.all(10.0),
       ),
     ];
     return Scaffold(
@@ -604,7 +637,7 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
               ],
             ),
           ],
-          backgroundColor: Colors.blue[300],
+          backgroundColor: Colors.blue[450],
         ),
       ),
       body: Container(
@@ -618,18 +651,18 @@ class _DeviceMenuBottomSheet extends State<DeviceMenuBottomSheet> {
           child: ListView.builder(
             controller: listViewScroll,
             scrollDirection: Axis.vertical,
-            itemCount: widget.devices != null ? widget.devices.length*2 + 3 : 3,
+            itemCount: widget.devices != null ? widget.devices.length*2+2 : 2,
             shrinkWrap: true,
-            padding: EdgeInsets.all(7.0),
             itemBuilder: (context, i) {
-              if (i < 3) return mainComponent[i];
+              if (i < 2) return mainComponent[i];
               else {
-                if (i%2 == 0) {
-                  j+=1;
+                if(i%2 == 0){
+                  j += 1;
                   return buildDevice(widget.devices[j-1], j-1);
-                } else return Padding(padding: EdgeInsets.all(5.0),);
+                }
+                else return Padding(padding: EdgeInsets.all(5.0),);
               }
-            },
+              }
           ),
         )
       ),
