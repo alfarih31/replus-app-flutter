@@ -181,7 +181,6 @@ class _MainPage extends State<MainPage> {
     return MaterialApp(
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        canvasColor: Colors.transparent,
       ),
       home: signed ? Home(firebaseData:_currentUser, logoutTap: logoutUser) : buildAuth(),
     );

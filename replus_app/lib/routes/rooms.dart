@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:replus_app/api.dart';
 import 'package:replus_app/widgets/widgets.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:replus_app/widgets/deviceMenu.dart';
+import 'package:replus_app/routes/deviceMenu.dart';
 
 final FlutterSecureStorage cache = FlutterSecureStorage();
 final chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -13,11 +13,8 @@ final floatingKey = Key(randomString(5));
 API apiClient;
 String _uid;
 ShowSnackBar snackBar;
-Map deviceList;
-List roomList;
 Map cacheData;
 
-List<dynamic> groupList;
 List<String> groups = ['No group', '1', '2'];
 Map roomState = new Map();
 
@@ -42,24 +39,27 @@ class _MainRoom extends State<MainRoom> with AutomaticKeepAliveClientMixin<MainR
   _MainRoom({this.uid});
   final String uid;
   final GlobalKey<ScaffoldState> scaffoldKey = new GlobalKey<ScaffoldState>();
-  bool initDone = false;
+  Map deviceMap;
+  List roomList;
+  List<dynamic> groupList;
 
   Future<bool> init() async {
     apiClient = new API(uid: uid);
-    snackBar = new ShowSnackBar(scaffoldKey: scaffoldKey);
+    await apiClient.initDone;
+    snackBar = new ShowSnackBar(scaffoldKey: scaffoldKey,);
     _uid = uid;
     cacheData = await cache.readAll();
     if(cacheData['fetched'] == '1') {
-      deviceList= json.decode(cacheData['deviceList']);
+      deviceMap= json.decode(cacheData['deviceList']);
       roomList = json.decode(cacheData['roomList']);
       groupList = json.decode(cacheData['groupList']);
     } else {
       await apiClient.refreshToken();
       List userData = await apiClient.getUserData();
       roomList = userData[0];
-      deviceList = userData[1][0];
+      deviceMap = userData[1][0];
       groupList = userData[2];
-      await cache.write(key: 'deviceList', value: json.encode(deviceList));
+      await cache.write(key: 'deviceList', value: json.encode(deviceMap));
       await cache.write(key: 'roomList', value: json.encode(roomList));
       await cache.write(key: 'groupList', value: json.encode(groupList));
       await cache.write(key: 'fetched', value: '1');
@@ -76,7 +76,11 @@ class _MainRoom extends State<MainRoom> with AutomaticKeepAliveClientMixin<MainR
         builder: (context, snapshot) {
           if(snapshot.connectionState == ConnectionState.done) {
             if(snapshot.hasData){
-              return new ListItemController(scaffoldKey: scaffoldKey,);
+              return new ListItemController(
+                scaffoldKey: scaffoldKey,
+                roomList: roomList,
+                deviceMap: deviceMap,
+              );
             }
           } else return Container(
             color: Colors.white70,
@@ -101,7 +105,9 @@ class _MainRoom extends State<MainRoom> with AutomaticKeepAliveClientMixin<MainR
 
 class ListItemController extends StatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
-  ListItemController({this.scaffoldKey,});
+  final Map deviceMap;
+  final List roomList;
+  ListItemController({this.scaffoldKey, this.deviceMap, this.roomList});
 
   @override
  _ListItemController createState() => new _ListItemController(scaffoldKey: scaffoldKey,);
@@ -111,18 +117,16 @@ class _ListItemController extends State<ListItemController> {
   final GlobalKey<ScaffoldState> scaffoldKey;
   final TextEditingController roomNameInputController = new TextEditingController();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-  Map deviceList;
-  List roomList;
   bool onDevice = false;
   _ListItemController({this.scaffoldKey});
 
   void removeRoom(int index) {
     setState(() {
-      deviceList.remove(roomList[index]['id']);
-      roomState.remove(roomList[index]['id']);
-      roomList.removeAt(index);
-      cache.write(key: 'roomList', value: json.encode(roomList));
-      cache.write(key: 'deviceList', value: json.encode(deviceList));
+      widget.deviceMap.remove(widget.roomList[index]['id']);
+      roomState.remove(widget.roomList[index]['id']);
+      widget.roomList.removeAt(index);
+      cache.write(key: 'roomList', value: json.encode(widget.roomList));
+      cache.write(key: 'deviceList', value: json.encode(widget.deviceMap));
     });
   }
 
@@ -136,13 +140,18 @@ class _ListItemController extends State<ListItemController> {
       'group': null,
     };
     setState(() {
-      roomList.add(roomData);
-      cache.write(key: 'roomList', value: json.encode(roomList));
+      widget.roomList.add(roomData);
+      cache.write(key: 'roomList', value: json.encode(widget.roomList));
       });
   }
 
-  Future confirmAddRoom(Null) async {
-    snackBar.show('Adding', true, true);
+  Future<void> confirmAddRoom(int) async {
+    snackBar.show(
+      action: 'Adding',
+      active: true,
+      status: true,
+      type: 'room'
+    );
     String id;
     String tempTitle = roomNameInputController.text;
     roomNameInputController.clear();
@@ -153,8 +162,17 @@ class _ListItemController extends State<ListItemController> {
     }
     if (id != 'false') {
       addRoom(id, tempTitle);
-      snackBar.show('Adding', false, true);
-    } else snackBar.show('Adding', false, false);
+      snackBar.show(
+        action: 'Adding',
+        active: false,
+        status: true,
+        type: 'room');
+    } else snackBar.show(
+      action: 'Adding',
+      active: false,
+      status: false,
+      type: 'room'
+    );
   }
 
   void roomAddDialog() {
@@ -193,12 +211,21 @@ class _ListItemController extends State<ListItemController> {
       backgroundColor: Colors.white,
       body: new ListView.builder(
         key: new Key(randomString(20)),
-        itemCount: roomList.length,
+        itemCount: widget.roomList.length,
         itemBuilder: (BuildContext context, index) {
-          Map room = roomList[index];
-          List devices = deviceList['${room['id']}'];
+          Map room = widget.roomList[index];
+          List devices = widget.deviceMap['${room['id']}'];
           bool isExpanded = roomState.containsKey(room['id']) ? roomState[room['id']] : false;
-          return new CreateListItem(index: index, room: room, devices: devices, removeRoom: removeRoom, floatingState: floatingState,isExpanded: isExpanded, scaffoldKey: scaffoldKey,);
+          return new CreateListItem(index: index,
+            room: room,
+            devices: devices,
+            removeRoom: removeRoom,
+            floatingState: floatingState,
+            isExpanded: isExpanded,
+            scaffoldKey: scaffoldKey,
+            deviceMap: widget.deviceMap,
+            roomList: widget.roomList,
+          );
         },
       ),
       floatingActionButton: onDevice ? null : Container(
@@ -224,11 +251,9 @@ class _ListItemController extends State<ListItemController> {
                   Icon(Icons.add, size: 15.0,),
                 ],
               ),
-              Container(
+              RowDivider(
                 height: 40.0,
-                width: 1.1,
                 color: Colors.lightBlue[200],
-                margin: const EdgeInsets.only(left: 10.0, right: 10.0),
               ),
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -257,7 +282,9 @@ class CreateListItem extends StatefulWidget{
     this.removeRoom,
     this.floatingState,
     this.isExpanded,
-    this.scaffoldKey})
+    this.scaffoldKey,
+    this.deviceMap,
+    this.roomList,})
     : super(key : key);
   final Map room;
   final int index;
@@ -265,27 +292,26 @@ class CreateListItem extends StatefulWidget{
   final ValueChanged<int> removeRoom;
   final ValueChanged<bool> floatingState;
   final GlobalKey<ScaffoldState> scaffoldKey;
+  final Map deviceMap;
+  final List roomList;
   final bool isExpanded;
 
   @override
-  _CreateListItem createState() => new _CreateListItem(index: index, room: room, devices: devices, isExpanded: isExpanded, scaffoldKey: scaffoldKey,);
+  _CreateListItem createState() => new _CreateListItem(scaffoldKey: scaffoldKey,);
 }
 
 class _CreateListItem extends State<CreateListItem> {
-  bool isExpanded, onRename, isEnabled, onGroupAdd;
-  final Map room;
-  final List devices;
-  final int index;
+  bool onRename, isEnabled, onGroupAdd, isExpanded;
   final GlobalKey<ScaffoldState> scaffoldKey;
   final GlobalKey<FormState> titleFormKey = new GlobalKey();
   final GlobalKey<FormState> groupFormKey = new GlobalKey();
   final TextEditingController titleController = new TextEditingController();
   final TextEditingController groupController = new TextEditingController();
   String currentTitle, currentGroup, tempGroup;
-  _CreateListItem({this.index, this.room, this.devices, this.isExpanded, this.scaffoldKey});
+  _CreateListItem({this.scaffoldKey});
 
   void changeTrailing(bool state) => setState(() {
-    roomState.update(room['id'], (dynamic _state) => state, ifAbsent: () => state);
+    roomState.update(widget.room['id'], (dynamic _state) => state, ifAbsent: () => state);
     isExpanded = state;
   });
 
@@ -318,36 +344,57 @@ class _CreateListItem extends State<CreateListItem> {
     );
   }
 
+  // Room Utility
   Future confirmRoomRename() async {
     if(currentTitle == titleController.text) return setState(() => onRename = !onRename);
     if(titleFormKey.currentState.validate()) {
       setState(()=> isEnabled = !isEnabled);
-      snackBar.show('Renaming', true, true);
-      bool status = await apiClient.roomEdit(titleController.text, 'undefined', room['id']);
+      snackBar.show(
+        action: 'Renaming',
+        active: true,
+        status: true,
+        type: 'room'
+      );
+      bool status = await apiClient.roomEdit(titleController.text, 'undefined', widget.room['id']);
       if (!status) {
         await apiClient.refreshToken();
-        status = await apiClient.roomEdit(titleController.text, 'undefined', room['id']);
+        status = await apiClient.roomEdit(titleController.text, 'undefined', widget.room['id']);
       }
-      snackBar.show('Renaming', false, status);
       if (status) {
         currentTitle = titleController.text;
-        roomList[index]['name'] = currentTitle;
-        await cache.write(key: 'roomList', value: json.encode(roomList));
+        widget.roomList[widget.index]['name'] = currentTitle;
+        await cache.write(key: 'roomList', value: json.encode(widget.roomList));
         setState(() {isEnabled = !isEnabled; onRename = !onRename;});
       }
+      snackBar.show(
+        action: 'Renaming',
+        active: true,
+        status: status,
+        type: 'room'
+      );
     }
   }
 
   Future confirmRoomDelete() async {
     setState(() => isEnabled = !isEnabled);
-    snackBar.show('Deleting', true, true);
-    bool status = await apiClient.roomDelete(room['id']);
+    snackBar.show(
+      action: 'Deleting',
+      active: true,
+      status: false,
+      type: 'room'
+    );
+    bool status = await apiClient.roomDelete(widget.room['id']);
     if (!status) {
       await apiClient.refreshToken();
-      status = await apiClient.roomDelete(room['id']);
+      status = await apiClient.roomDelete(widget.room['id']);
     }
-    snackBar.show('Deleting', false, status);
-    if(status) widget.removeRoom(index);
+    snackBar.show(
+      action: 'Renaming',
+      active: true,
+      status: status,
+      type: 'room'
+    );
+    if(status) widget.removeRoom(widget.index);
   }
 
   void roomDeleteDialog() {
@@ -438,25 +485,27 @@ class _CreateListItem extends State<CreateListItem> {
     );
   }
 
+
+  // Device Utility
   Future confirmAddDevice(List data) async {
     Map device = {
       'name': data[0],
-      'room': room['id'],
+      'room': widget.room['id'],
       'type': data[2],
       'owner': _uid,
       'command': new Map(),
       };
     bool status = await apiClient.deviceAdd(
-        data[0], data[1], room['id'], data[2]);
+        data[0], data[1], widget.room['id'], data[2]);
     if(!status) {
       await apiClient.refreshToken();
       status = await apiClient.deviceAdd(
-        data[0], data[1], room['id'], data[2]);
+        data[0], data[1], widget.room['id'], data[2]);
     }
     if(status) {
-      print(deviceList['${room['id']}']);
-      deviceList['${room['id']}'].add(device);
-      await cache.write(key: 'deviceList', value: json.encode(deviceList));
+      if(widget.deviceMap['${widget.room['id']}'] == null) widget.deviceMap.addAll({'${widget.room['id']}':new List()});
+      widget.deviceMap['${widget.room['id']}'].add(device);
+      await cache.write(key: 'deviceList', value: json.encode(widget.deviceMap));
       return true;
     } else return false;
   }
@@ -468,9 +517,24 @@ class _CreateListItem extends State<CreateListItem> {
       status = await apiClient.deviceDelete(deviceName);
     }
     if(status) {
-      devices.removeAt(index);
-      deviceList['${room['id']}'].toList().removeAt(index);
-      await cache.write(key: 'deviceList', value: json.encode(deviceList));
+      widget.devices.removeAt(index);
+      widget.deviceMap['${widget.room['id']}'] = widget.devices;
+      await cache.write(key: 'deviceList', value: json.encode(widget.deviceMap));
+      return true;
+    } else return false;
+  }
+
+  Future confirmSetupDevice({String deviceName, String on, String off, int index}) async {
+    bool status = await apiClient.deviceSetup(device: deviceName, on: on, off: off);
+    if(!status) {
+      await apiClient.refreshToken();
+      status = await apiClient.deviceSetup(device: deviceName, on: on, off: off);
+    }
+    if(status) {
+      if(on != null)  widget.devices[index]['command']['on'] = on;
+      if(off != null)  widget.devices[index]['command']['off'] = off;
+      widget.deviceMap['${widget.room['id']}'] = widget.devices;
+      await cache.write(key: 'deviceList', value: json.encode(widget.deviceMap));
       return true;
     } else return false;
   }
@@ -479,7 +543,12 @@ class _CreateListItem extends State<CreateListItem> {
     widget.floatingState(true);
     scaffoldKey.currentState.showBottomSheet(
       (BuildContext context) {
-        return DeviceMenuBottomSheet(devices: devices, room: room['name'], saveDevice: confirmAddDevice, deleteDevice: confirmDeleteDevice,);
+        return DeviceMenuBottomSheet(devices: widget.devices,
+          room: widget.room['name'],
+          saveDevice: confirmAddDevice,
+          deleteDevice: confirmDeleteDevice,
+          setupDevice: confirmSetupDevice,
+        );
       }
     ).closed.whenComplete(() => widget.floatingState(false));
   }
@@ -490,11 +559,11 @@ class _CreateListItem extends State<CreateListItem> {
       children: <Widget>[
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
-          child: createItem('Devices', Icons.devices, devices == null ? '0' : '${devices.length}', showDeviceBottomSheet),
+          child: createItem('Devices', Icons.devices, widget.devices == null ? '0' : '${widget.devices.length}', showDeviceBottomSheet),
         ),
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
-          child: createItem('Remotes', Icons.settings_remote, '${room['remotes'].length}', null),
+          child: createItem('Remotes', Icons.settings_remote, '${widget.room['remotes'].length}', null),
         ),
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
@@ -637,8 +706,9 @@ class _CreateListItem extends State<CreateListItem> {
     onRename = false;
     isEnabled = true;
     onGroupAdd = false;
-    currentTitle = room['name'];
-    currentGroup = room.containsKey('group') ? room['group'] : 'No Group';
+    isExpanded = widget.isExpanded;
+    currentTitle = widget.room['name'];
+    currentGroup = widget.room['group'] ?? 'No Group';
     titleController.text = currentTitle;
     groupController.text = currentGroup;
     tempGroup = currentGroup;

@@ -31,6 +31,14 @@
           }
         },
         {
+          "client_id": "369821906057-t2o82la0dp6gn0u8dvugkm693l4vld4v.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.replus.replusapp",
+            "certificate_hash": "c79d13e70ceb4d0bef860689cb5ce7bf74b33b6e"
+          }
+        },
+        {
           "client_id": "369821906057-863g5bnhrsqs5fnj5oecgaksf47ih14p.apps.googleusercontent.com",
           "client_type": 3
         }

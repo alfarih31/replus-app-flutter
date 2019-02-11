@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 
 class ShowSnackBar {
   final GlobalKey<ScaffoldState> scaffoldKey;
-  ShowSnackBar({this.scaffoldKey});
+  ShowSnackBar({this.scaffoldKey,});
 
-  void show(String action, bool active, bool status) {
+  void show({String action, bool active, bool status, String type}) {
     final snackbar =  active ?
                   SnackBar(
                     backgroundColor: Colors.blueGrey,
                     content: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: <Widget>[
-                      Text('$action room...'),
+                      Text('$action $type...'),
                       CircularProgressIndicator(),
                       ],
                     ),
@@ -19,7 +19,7 @@ class ShowSnackBar {
                   SnackBar(
                     backgroundColor: Colors.blueGrey,
                     duration: Duration(seconds: 2),
-                    content: Text(status ? '$action room success' : '$action room failed'),
+                    content: Text(status ? '$action $type success' : '$action $type failed'),
                     action: SnackBarAction(
                       label: 'OK',
                       onPressed: () {},
@@ -32,7 +32,7 @@ class ShowSnackBar {
 class CustomDialog extends StatelessWidget {
   final String title, hintText, caption, validate, labelText;
   final IconData icon;
-  final ValueChanged onPressed;
+  final ValueChanged<void> onPressed;
   final TextEditingController controller;
   final GlobalKey<FormState> formKey;
   CustomDialog({this.hintText,
@@ -164,6 +164,38 @@ class CustomDialog extends StatelessWidget {
           ),
         )
       ),
+    );
+  }
+}
+
+class RowDivider extends StatelessWidget {
+  final double height;
+  final Color color;
+  RowDivider({this.height, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      width: 1.1,
+      color: color,
+      margin: const EdgeInsets.only(right: 10.0, left: 10.0),
+    );
+  }
+}
+
+class ColumnDivider extends StatelessWidget {
+  final double width;
+  final Color color;
+  ColumnDivider({this.width, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 1.1,
+      width: width,
+      color: color,
+      margin: const EdgeInsets.only(top: 10.0, bottom: 10.0),
     );
   }
 }

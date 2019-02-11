@@ -600,7 +600,7 @@ class SlidableController {
 
   final ValueChanged<Animation<double>> onSlideAnimationChanged;
   final ValueChanged<bool> onSlideIsOpenChanged;
-  bool _isSlideOpen;
+  bool _isSlideOpen = false;
 
   Animation<double> _slideAnimation;
 
@@ -616,7 +616,7 @@ class SlidableController {
         _slideAnimation = value?.overallMoveAnimation;
         _slideAnimation?.addListener(_handleSlideIsOpenChanged);
         if (_slideAnimation == null) {
-          _isSlideOpen = false;
+          this._isSlideOpen = false;
           onSlideIsOpenChanged(_isSlideOpen);
         }
       }
@@ -633,6 +633,8 @@ class SlidableController {
       }
     }
   }
+
+  bool get slideOpen => _isSlideOpen;
 }
 
 /// A widget that can be slid in both direction of the specified axis.

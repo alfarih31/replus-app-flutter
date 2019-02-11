@@ -135,5 +135,19 @@ class API{
       return true;
     } else return false;
   }
+
+  Future <bool> deviceSetup({String device, String on, String off}) async {
+    final Map body = new Map();
+    if(on != null) body.addAll({'onCommand' : on});
+    if(off != null) body.addAll({'offCommand': off});
+
+    response = await ioClient.put('$apiV2/device-setup?uid=$uid&device=$device',
+                body: body,
+                headers: {'accesstoken': '$accessToken'});
+    if (response.statusCode == 200) {
+      return true;
+    } else return false;
+  }
+
   Future get initDone => _initDone;
 }

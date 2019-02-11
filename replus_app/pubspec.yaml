@@ -41,3 +41,12 @@ flutter:
   assets:
     - assets/images/glogo.png
     - assets/images/repluslogo.png
+
+    - assets/manifests/daikin/manifest.json
+    - assets/manifests/dast/manifest.json
+    - assets/manifests/lg/manifest.json
+    - assets/manifests/mitsubishi/manifest.json
+    - assets/manifests/panasonic/manifest.json
+    - assets/manifests/panasonicold/manifest.json
+    - assets/manifests/samsung/manifest.json
+    - assets/manifests/toshiba/manifest.json
